@@ -1,2 +1,3 @@
 # Spring2023
-Campus map
+Campus map:
+https://tugsaunion.github.io/Spring2023/
