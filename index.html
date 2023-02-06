@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> Temple University Schedule Spring 2023--Food Truck Foot Traffic</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+</head>
+<style>
+.main-heading {
+    font-size: 15px;
+}
+#selectedLayer {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: bold;
+  font-size: 60px;
+  text-shadow: 2px 2px 2px white;
+  z-index: 100;
+  text-align: center;
+}
+.building-label {
+  font-size: 20px;
+  padding: 2px 4px;
+}
+#color-key {
+  height: 150px;
+  width: 20px;
+  margin-left: 20px;
+  border-left: 2px solid #333;
+}
+#color-key {
+  background: linear-gradient(to top,
+    #FEB24C,
+    #FD8D3C,
+    #FC4E2A,
+    #E31A1C,
+    #BD0026,
+    #800026
+  );
+}
+#legend {
+  position: absolute;
+  bottom: 25px;
+  right: 25px;
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+}
+#legend span {
+  display: block;
+  margin-top: 10px;
+  font-size: 40px;
+}
+#legend span:first-of-type {
+  margin-top: 0;
+}
+} */
+</style>
+<body>
+    <div id="map" style=" position: fixed; right: 0; left: 0px; top: 0; bottom: 0 "></div>
+    <div id="map"></div>
+    <div id="selectedLayer">Monday Morning</div>
+
+    <div id="legend" style="position: absolute; bottom: 20px; right: 20px;">
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #800026;"></div>
+        <div style="margin-left: 10px;"> > 1500</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #BD0026;"></div>
+        <div style="margin-left: 10px;"> > 1000</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #E31A1C;"></div>
+        <div style="margin-left: 10px;"> > 600</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #FC4E2A;"></div>
+        <div style="margin-left: 10px;"> > 300</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #FD8D3C;"></div>
+        <div style="margin-left: 10px;"> > 100</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 20px; height: 20px; background-color: #FEB24C;"></div>
+        <div style="margin-left: 10px;"> <= 100</div>
+      </div>
+      <h4> Students </h4>
+    </div>
+    <!-- JS IMPORTS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script src= "js/setup.js"></script>
+    <script src= "js/data.js"></script>
+    <script>
+
+    function getDataForDayAndTime(data, day, time) {
+      var filteredData = {"type":"FeatureCollection","features":[]};
+
+      for (var i = 0; i < data.features.length; i++) {
+        if (data.features[i].properties.day === day && data.features[i].properties.time2 === time) {
+          filteredData.features.push(data.features[i]);
+        }
+      }
+      return filteredData;
+    }
+
+    var fridayAfternoonData = getDataForDayAndTime(data, "Friday", "Afternoon");
+    var fridayMorningData = getDataForDayAndTime(data, "Friday", "Morning");
+    var thursdayAfternoonData = getDataForDayAndTime(data, "Thursday", "Afternoon");
+    var thursdayMorningData = getDataForDayAndTime(data, "Thursday", "Morning");
+    var wednesdayAfternoonData = getDataForDayAndTime(data, "Wednesday", "Afternoon");
+    var wednesdayMorningData = getDataForDayAndTime(data, "Wednesday", "Morning");
+    var tuesdayAfternoonData = getDataForDayAndTime(data, "Tuesday", "Afternoon");
+    var tuesdayMorningData = getDataForDayAndTime(data, "Tuesday", "Morning");
+    var mondayAfternoonData = getDataForDayAndTime(data, "Monday", "Afternoon");
+    var mondayMorningData = getDataForDayAndTime(data, "Monday", "Morning");
+
+    var legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function (map) {
+      var div = L.DomUtil.create('div', 'info legend'),
+          sizes = [0, 100, 300, 600, 1000, 1500],
+          labels = [];
+      for (var i = 0; i < sizes.length; i++) {
+        div.innerHTML +=
+          '<i style="background:' + setColorFunc(sizes[i] + 1) + '"></i> ' +
+          sizes[i] + (sizes[i + 1] ? '&ndash;' + sizes[i + 1] + '<br>' : '+');
+      }
+      return div;
+    };
+
+    legend.addTo(map);
+
+  // Add Scale Bar to Map
+        L.control.scale({position: 'topleft'}).addTo(map);
+        function setColorFunc(size) {
+              return size > 1500 ? '#800026' :
+                size > 1000 ? '#BD0026' :
+                size > 600  ? '#E31A1C' :
+                size > 300  ? '#FC4E2A' :
+                size > 100  ? '#FD8D3C' :
+                '#FEB24C';
+            };
+
+        function styleFunc(feature) {
+          return {
+            fillColor: setColorFunc(feature.properties.total_size),
+            fillOpacity: 0.9,
+            weight: 1,
+            opacity: 1,
+            color: '#ffffff',
+            dashArray: '3'
+          };
+        }
+
+    var fridayAfternoonLayer = L.geoJSON(fridayAfternoonData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=66118305\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var fridayMorningLayer = L.geoJSON(fridayMorningData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=452014905\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var thursdayAfternoonLayer = L.geoJSON(thursdayAfternoonData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=103761867\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+       //Easter Egg
+        console.log("This map is designed to locate the food truck with the least amount of foot traffic. Delicious! - tpm")
+
+    var thursdayMorningLayer = L.geoJSON(thursdayMorningData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=771959805\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var wednesdayAfternoonLayer = L.geoJSON(wednesdayAfternoonData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=1661495867\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var wednesdayMorningLayer = L.geoJSON(wednesdayMorningData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=2077010667\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var tuesdayAfternoonLayer = L.geoJSON(tuesdayAfternoonData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=1919207160\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var tuesdayMorningLayer = L.geoJSON(tuesdayMorningData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=640782380\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var mondayAfternoonLayer = L.geoJSON(mondayAfternoonData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=1617355735\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       });
+
+    var mondayMorningLayer = L.geoJSON(mondayMorningData, {
+      style: styleFunc,
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: zoomFeature
+        });
+        layer.bindPopup("<div style='font-size:20px'>"
+                +  "<strong>Building:</strong> " + feature.properties.building + " " + "<br>"
+                + "<strong>More Info: </strong>" + "<a href=\"https://docs.google.com/spreadsheets/d/1cbJ24q-c4EYKWycUEkF64pfshBcawOvW/edit#gid=1125477693\">Click Here</a>" + " " + "<br>"
+                + "<strong>Students:</strong> " + feature.properties.total_size + " " + "<br>"
+                + "</div>"
+                );
+       layer.bindTooltip(feature.properties.building, {
+       permanent: true,
+       direction: "center",
+       className: "building-label",
+       opacity: 0.9,
+       backgroundColor: null,
+       textColor: "#000000"
+       });
+       }
+       }).addTo(map);
+
+  var baseLayers = {
+    'Monday Morning': mondayMorningLayer,
+    'Monday Afternoon': mondayAfternoonLayer,
+    'Tuesday Morning': tuesdayAfternoonLayer,
+    'Tuesday Afternoon': tuesdayMorningLayer,
+    'Wednesday Morning': wednesdayMorningLayer,
+    'Wednesday Afternoon': wednesdayAfternoonLayer,
+    'Thursday Morning': thursdayMorningLayer,
+    'Thursday Afternoon': thursdayAfternoonLayer,
+    'Friday Morning': fridayMorningLayer,
+    'Friday Afternoon': fridayAfternoonLayer,
+  };
+  L.control.layers(baseLayers, {}, {collapsed:false, activeBaseLayer: mondayMorningLayer}).addTo(map);
+
+  var currentLayerName = Object.keys(baseLayers)[0];
+  document.querySelector("#selectedLayer").innerText = currentLayerName;
+
+  map.on("baselayerchange", function(e) {
+    currentLayerName = e.name;
+    document.querySelector("#selectedLayer").innerText = currentLayerName;
+  });
+
+var dayLayers = [mondayAfternoonLayer, mondayMorningLayer,tuesdayAfternoonLayer,tuesdayMorningLayer,
+                 wednesdayAfternoonLayer, wednesdayMorningLayer, thursdayMorningLayer,
+                 thursdayAfternoonLayer,fridayMorningLayer, fridayAfternoonLayer];
+
+function resetHighlight(e) {
+    for (var i = 0; i < dayLayers.length; i++) {
+        dayLayers[i].resetStyle(e.target);
+    }
+}
+  function zoomFeature(e){
+    console.log(e.target.getBounds());
+    console.log("This map is designed to locate the food truck with the least amount of foot traffic. Delicious! - tpm")
+    map.fitBounds(e.target.getBounds().pad(1.5));
+  }
+
+  function highlightFeature(e){
+    var layer = e.target;
+
+    layer.setStyle({
+      weight: 5,
+      color: '#696',
+      dashArray: '',
+      fillOpacity: 0.7
+    });
+    // for different web browsers
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+      layer.bringToFront();
+    }
+  }
+
+  </script>
+</body>
+</html>
